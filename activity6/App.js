@@ -11,26 +11,25 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const BookContext = createContext();
 
 const books = [
-  { id: '1', title: 'The Little Prince', author: 'Antoine de Saint-Exupéry' },
-  { id: '2', title: 'Atomic Habits', author: 'James Clear' },
-  { id: '3', title: 'The Alchemist', author: 'Paulo Coelho' },
-  { id: '4', title: 'Wonder', author: 'R. J. Palacio' },
-  { id: '5', title: 'Ikigai', author: 'Héctor García' },
+  { id: '1', title: 'The Little Prince', author: 'Antoine de Saint-Exupéry', emoji: '⭐' },
+  { id: '2', title: 'Atomic Habits', author: 'James Clear', emoji: '🌱' },
+  { id: '3', title: 'The Alchemist', author: 'Paulo Coelho', emoji: '🪄' },
+  { id: '4', title: 'Wonder', author: 'R. J. Palacio', emoji: '🌸' },
+  { id: '5', title: 'Ikigai', author: 'Héctor García', emoji: '🌷' },
 ];
 
 function BookProvider({ children }) {
   const [readingList, setReadingList] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  // Show a short updating state before changing the list
+  // Update shared book information
   const updateLibrary = (action) => {
     if (saving) return;
-
     setSaving(true);
 
     setTimeout(() => {
@@ -72,13 +71,7 @@ function BookProvider({ children }) {
 
   return (
     <BookContext.Provider
-      value={{
-        readingList,
-        saving,
-        addBook,
-        removeBook,
-        toggleCompleted,
-      }}
+      value={{ readingList, saving, addBook, removeBook, toggleCompleted }}
     >
       {children}
     </BookContext.Provider>
@@ -104,41 +97,61 @@ function DiscoverScreen() {
   const { readingList, addBook, saving } = useContext(BookContext);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>BookNest 📚</Text>
-      <Text style={styles.subtitle}>Find your next favorite read.</Text>
-      <Text style={styles.count}>Your library: {readingList.length} books</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerEmoji}>📚</Text>
+          <Text style={styles.title}>BookNest</Text>
+          <Text style={styles.subtitle}>A little space for big stories.</Text>
+        </View>
 
-      <SavingMessage />
+        <View style={styles.banner}>
+          <Text style={styles.bannerTitle}>Find your next chapter ♡</Text>
+          <Text style={styles.bannerText}>
+            Discover stories and build your own reading collection.
+          </Text>
+        </View>
 
-      <FlatList
-        data={books}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => {
-          const saved = readingList.some((book) => book.id === item.id);
+        <Text style={styles.sectionTitle}>Discover Books</Text>
+        <Text style={styles.count}>{readingList.length} books in your library</Text>
 
-          return (
-            <View style={styles.card}>
-              <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>{item.title}</Text>
-                <Text style={styles.author}>{item.author}</Text>
+        <SavingMessage />
+
+        <FlatList
+          data={books}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const saved = readingList.some((book) => book.id === item.id);
+
+            return (
+              <View style={styles.card}>
+                <View style={styles.bookEmoji}>
+                  <Text style={styles.emojiText}>{item.emoji}</Text>
+                </View>
+
+                <View style={styles.bookInfo}>
+                  <Text style={styles.bookTitle}>{item.title}</Text>
+                  <Text style={styles.author}>{item.author}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.button, saved && styles.savedButton]}
+                  onPress={() => addBook(item)}
+                  disabled={saved || saving}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.buttonText}>
+                    {saved ? 'Added ✓' : '+ Add'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[styles.button, saved && styles.savedButton]}
-                onPress={() => addBook(item)}
-                disabled={saved || saving}
-              >
-                <Text style={styles.buttonText}>
-                  {saved ? 'Added ✓' : '+ Add'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          );
-        }}
-      />
-    </View>
+            );
+          }}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -146,55 +159,79 @@ function ReadingScreen() {
   const { readingList, removeBook, toggleCompleted, saving } =
     useContext(BookContext);
 
+  const completed = readingList.filter((book) => book.completed).length;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>My Reading ♡</Text>
-      <Text style={styles.subtitle}>{readingList.length} saved books</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
+        <Text style={styles.headerEmoji}>💗</Text>
+        <Text style={styles.title}>My Reading List</Text>
+        <Text style={styles.subtitle}>Your stories, your progress.</Text>
 
-      <SavingMessage />
+        <View style={styles.progressCard}>
+          <Text style={styles.progressTitle}>Your Reading Progress</Text>
+          <Text style={styles.progressNumber}>
+            {completed} / {readingList.length}
+          </Text>
+          <Text style={styles.progressCaption}>Books completed</Text>
+        </View>
 
-      <FlatList
-        data={readingList}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Your reading list is empty.</Text>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.bookInfo}>
-              <Text style={styles.bookTitle}>{item.title}</Text>
-              <Text style={styles.author}>{item.author}</Text>
-              <Text style={styles.status}>
-                {item.completed ? 'Completed ✓' : 'Currently reading'}
+        <SavingMessage />
+
+        <FlatList
+          data={readingList}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyEmoji}>📖</Text>
+              <Text style={styles.emptyTitle}>Your list is waiting!</Text>
+              <Text style={styles.empty}>
+                Add a book from the Discover tab.
               </Text>
             </View>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.bookEmoji}>
+                <Text style={styles.emojiText}>{item.emoji}</Text>
+              </View>
 
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.smallButton}
-                onPress={() => toggleCompleted(item.id)}
-                disabled={saving}
-              >
-                <Ionicons
-                  name={item.completed ? 'refresh' : 'checkmark'}
-                  size={18}
-                  color="#FFFFFF"
-                />
-              </TouchableOpacity>
+              <View style={styles.bookInfo}>
+                <Text style={styles.bookTitle}>{item.title}</Text>
+                <Text style={styles.author}>{item.author}</Text>
+                <Text style={styles.status}>
+                  {item.completed ? 'Completed ✓' : 'Currently reading'}
+                </Text>
+              </View>
 
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => removeBook(item.id)}
-                disabled={saving}
-              >
-                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.smallButton}
+                  onPress={() => toggleCompleted(item.id)}
+                  disabled={saving}
+                >
+                  <Ionicons
+                    name={item.completed ? 'refresh' : 'checkmark'}
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => removeBook(item.id)}
+                  disabled={saving}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        )}
-      />
-    </View>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -205,10 +242,12 @@ function MainNavigation() {
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarActiveTintColor: '#D94F87',
-          tabBarInactiveTintColor: '#A99AA1',
+          tabBarInactiveTintColor: '#B6A4AD',
+          tabBarStyle: styles.tabBar,
+          tabBarLabelStyle: styles.tabLabel,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name={route.name === 'Discover' ? 'book-outline' : 'bookmark-outline'}
+              name={route.name === 'Discover' ? 'compass-outline' : 'heart-outline'}
               size={size}
               color={color}
             />
@@ -233,27 +272,60 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#FFF5F8',
-    padding: 18,
-    paddingTop: 35,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  headerEmoji: {
+    fontSize: 30,
   },
   title: {
-    fontSize: 27,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#D94F87',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: 13,
+    color: '#9B8791',
+    marginTop: 4,
+    marginBottom: 15,
+  },
+  banner: {
+    backgroundColor: '#F9DCE8',
+    padding: 16,
+    borderRadius: 17,
+    marginBottom: 18,
+  },
+  bannerTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#B83D73',
+  },
+  bannerText: {
+    color: '#8F5570',
+    fontSize: 12,
+    lineHeight: 18,
     marginTop: 5,
-    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    color: '#B83D73',
+    fontWeight: 'bold',
   },
   count: {
-    color: '#B83D73',
-    fontWeight: '600',
-    marginBottom: 12,
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    marginBottom: 10,
   },
   savingBox: {
     backgroundColor: '#F9DCE8',
@@ -262,7 +334,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   savingText: {
     color: '#B83D73',
@@ -274,31 +346,46 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    padding: 15,
-    borderRadius: 15,
+    padding: 12,
+    borderRadius: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     elevation: 2,
+    shadowColor: '#D98AA8',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  bookEmoji: {
+    width: 43,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FCE5EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  emojiText: {
+    fontSize: 23,
   },
   bookInfo: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 5,
   },
   bookTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#C44578',
   },
   author: {
-    color: '#888',
-    fontSize: 12,
+    color: '#999',
+    fontSize: 11,
     marginTop: 4,
   },
   button: {
     backgroundColor: '#E45B91',
-    paddingHorizontal: 13,
+    paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 10,
   },
@@ -308,16 +395,16 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 11,
   },
   status: {
     color: '#D94F87',
-    fontSize: 11,
-    marginTop: 7,
+    fontSize: 10,
+    marginTop: 6,
   },
   actions: {
     flexDirection: 'row',
-    gap: 7,
+    gap: 6,
   },
   smallButton: {
     backgroundColor: '#D94F87',
@@ -329,9 +416,60 @@ const styles = StyleSheet.create({
     padding: 9,
     borderRadius: 9,
   },
+  progressCard: {
+    backgroundColor: '#F9DCE8',
+    padding: 17,
+    borderRadius: 17,
+    marginBottom: 15,
+  },
+  progressTitle: {
+    color: '#B83D73',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  progressNumber: {
+    fontSize: 27,
+    fontWeight: 'bold',
+    color: '#D94F87',
+    marginTop: 7,
+  },
+  progressCaption: {
+    fontSize: 12,
+    color: '#8F5570',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    padding: 25,
+    borderRadius: 17,
+    marginTop: 12,
+  },
+  emptyEmoji: {
+    fontSize: 38,
+  },
+  emptyTitle: {
+    color: '#C44578',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
   empty: {
     color: '#999',
     textAlign: 'center',
-    marginTop: 40,
+    fontSize: 12,
+    marginTop: 5,
+  },
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#F6DCE7',
+    borderTopWidth: 1,
+    height: 62,
+    paddingTop: 5,
+    paddingBottom: 5,
+    elevation: 10,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
