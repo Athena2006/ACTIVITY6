@@ -16,8 +16,9 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  Platform,
 } from 'react-native';
+
+import { StatusBar } from 'expo-status-bar';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -26,14 +27,16 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   SafeAreaProvider,
   SafeAreaView,
+  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
 // Create the bottom tab navigator
 const Tab = createBottomTabNavigator();
 
-// Create shared book context
-const BookContext = createContext();
+// Shared book context
+const BookContext = createContext(null);
 
+// Available books
 const books = [
   {
     id: '1',
@@ -73,13 +76,13 @@ const books = [
   },
 ];
 
-// Context Provider for shared book data
+// Shared state provider
 function BookProvider({ children }) {
   const [readingList, setReadingList] = useState([]);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
-  // Show updating state before changing the reading list
+  // Update the reading list
   const updateLibrary = (action) => {
     if (savingRef.current) return;
 
@@ -90,10 +93,10 @@ function BookProvider({ children }) {
       action();
       savingRef.current = false;
       setSaving(false);
-    }, 700);
+    }, 400);
   };
 
-  // Add a book to the reading list
+  // Add a book
   const addBook = (book) => {
     if (
       savingRef.current ||
@@ -110,7 +113,7 @@ function BookProvider({ children }) {
     });
   };
 
-  // Remove a book from the reading list
+  // Remove a book
   const removeBook = (id) => {
     updateLibrary(() => {
       setReadingList((current) =>
@@ -119,7 +122,7 @@ function BookProvider({ children }) {
     });
   };
 
-  // Change the book completion status
+  // Change completion status
   const toggleCompleted = (id) => {
     updateLibrary(() => {
       setReadingList((current) =>
@@ -150,18 +153,18 @@ function BookProvider({ children }) {
 // Screen entrance animation
 function useScreenAnimation() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(22)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 650,
+        duration: 600,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 650,
+        duration: 600,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
@@ -190,59 +193,69 @@ function SavingMessage() {
   );
 }
 
-// Discover Screen
+// Discover screen
 function DiscoverScreen() {
   const { readingList, addBook, saving } = useContext(BookContext);
   const animation = useScreenAnimation();
 
+  // Handle Add button press
+  const handleAddBook = (book) => {
+    addBook(book);
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.container}>
-        <Animated.View style={[styles.header, animation]}>
-          <Text style={styles.headerEmoji}>📚</Text>
-
-          <Text style={styles.title}>BookNest</Text>
-
-          <Text style={styles.subtitle}>
-            A little space for big stories.
-          </Text>
-
-          <View style={styles.banner}>
-            <Text style={styles.bannerTitle}>
-              Find your next chapter ♡
-            </Text>
-
-            <Text style={styles.bannerText}>
-              Discover stories and build your own reading collection.
-            </Text>
-          </View>
-
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              Discover Books
-            </Text>
-
-            <Text style={styles.count}>
-              {readingList.length} saved
-            </Text>
-          </View>
-        </Animated.View>
-
-        <SavingMessage />
-
         <FlatList
-          style={styles.listView}
           data={books}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View>
+              <Animated.View style={[styles.header, animation]}>
+                <Text style={styles.headerEmoji}>📚</Text>
+
+                <Text style={styles.title}>BookNest</Text>
+
+                <Text style={styles.subtitle}>
+                  A little space for big stories.
+                </Text>
+
+                <View style={styles.banner}>
+                  <Text style={styles.bannerTitle}>
+                    Find your next chapter ♡
+                  </Text>
+
+                  <Text style={styles.bannerText}>
+                    Discover stories and build your own reading collection.
+                  </Text>
+                </View>
+
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>
+                    Discover Books
+                  </Text>
+
+                  <Text style={styles.count}>
+                    {readingList.length} saved
+                  </Text>
+                </View>
+              </Animated.View>
+
+              <SavingMessage />
+            </View>
+          }
           renderItem={({ item }) => {
             const saved = readingList.some(
               (book) => book.id === item.id
             );
 
             return (
-              <Animated.View style={[styles.card, animation]}>
+              <View style={styles.card}>
                 <View style={styles.bookEmoji}>
                   <Text style={styles.emojiText}>
                     {item.emoji}
@@ -264,7 +277,7 @@ function DiscoverScreen() {
                     styles.button,
                     saved && styles.savedButton,
                   ]}
-                  onPress={() => addBook(item)}
+                  onPress={() => handleAddBook(item)}
                   disabled={saved || saving}
                   activeOpacity={0.7}
                 >
@@ -272,7 +285,7 @@ function DiscoverScreen() {
                     {saved ? 'Added ✓' : '+ Add'}
                   </Text>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             );
           }}
         />
@@ -281,7 +294,7 @@ function DiscoverScreen() {
   );
 }
 
-// My Reading Screen
+// My Reading screen
 function ReadingScreen() {
   const {
     readingList,
@@ -296,41 +309,56 @@ function ReadingScreen() {
     (book) => book.completed
   ).length;
 
+  // Handle completion button press
+  const handleToggleCompleted = (id) => {
+    toggleCompleted(id);
+  };
+
+  // Handle delete button press
+  const handleRemoveBook = (id) => {
+    removeBook(id);
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.container}>
-        <Animated.View style={[styles.header, animation]}>
-          <Text style={styles.headerEmoji}>💗</Text>
-
-          <Text style={styles.title}>My Reading List</Text>
-
-          <Text style={styles.subtitle}>
-            Your stories, your progress.
-          </Text>
-
-          <View style={styles.progressCard}>
-            <Text style={styles.progressTitle}>
-              Your Reading Progress
-            </Text>
-
-            <Text style={styles.progressNumber}>
-              {completed} / {readingList.length}
-            </Text>
-
-            <Text style={styles.progressCaption}>
-              Books completed
-            </Text>
-          </View>
-        </Animated.View>
-
-        <SavingMessage />
-
         <FlatList
-          style={styles.listView}
           data={readingList}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View>
+              <Animated.View style={[styles.header, animation]}>
+                <Text style={styles.headerEmoji}>💗</Text>
+
+                <Text style={styles.title}>My Reading List</Text>
+
+                <Text style={styles.subtitle}>
+                  Your stories, your progress.
+                </Text>
+
+                <View style={styles.progressCard}>
+                  <Text style={styles.progressTitle}>
+                    Your Reading Progress
+                  </Text>
+
+                  <Text style={styles.progressNumber}>
+                    {completed} / {readingList.length}
+                  </Text>
+
+                  <Text style={styles.progressCaption}>
+                    Books completed
+                  </Text>
+                </View>
+              </Animated.View>
+
+              <SavingMessage />
+            </View>
+          }
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <Text style={styles.emptyEmoji}>📖</Text>
@@ -345,7 +373,7 @@ function ReadingScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <Animated.View style={[styles.card, animation]}>
+            <View style={styles.card}>
               <View style={styles.bookEmoji}>
                 <Text style={styles.emojiText}>
                   {item.emoji}
@@ -371,14 +399,12 @@ function ReadingScreen() {
               <View style={styles.actions}>
                 <TouchableOpacity
                   style={styles.smallButton}
-                  onPress={() => toggleCompleted(item.id)}
+                  onPress={() => handleToggleCompleted(item.id)}
                   disabled={saving}
                   activeOpacity={0.7}
                 >
                   <Ionicons
-                    name={
-                      item.completed ? 'refresh' : 'checkmark'
-                    }
+                    name={item.completed ? 'refresh' : 'checkmark'}
                     size={18}
                     color="#FFFFFF"
                   />
@@ -386,7 +412,7 @@ function ReadingScreen() {
 
                 <TouchableOpacity
                   style={styles.deleteButton}
-                  onPress={() => removeBook(item.id)}
+                  onPress={() => handleRemoveBook(item.id)}
                   disabled={saving}
                   activeOpacity={0.7}
                 >
@@ -397,7 +423,7 @@ function ReadingScreen() {
                   />
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
           )}
         />
       </View>
@@ -405,8 +431,10 @@ function ReadingScreen() {
   );
 }
 
-// Bottom Tab Navigation
+// Bottom tab navigation
 function MainNavigation() {
+  const insets = useSafeAreaInsets();
+
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -417,7 +445,15 @@ function MainNavigation() {
           tabBarActiveTintColor: '#D94F87',
           tabBarInactiveTintColor: '#B6A4AD',
 
-          tabBarStyle: styles.tabBar,
+          // Adjust navigation for the phone's bottom safe area
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              height: 62 + insets.bottom,
+              paddingBottom: Math.max(insets.bottom, 8),
+            },
+          ],
+
           tabBarLabelStyle: styles.tabLabel,
 
           tabBarIcon: ({ color, size }) => (
@@ -447,10 +483,11 @@ function MainNavigation() {
   );
 }
 
-// Main App
+// Main app
 export default function App() {
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" backgroundColor="#FFF5F8" />
       <BookProvider>
         <MainNavigation />
       </BookProvider>
@@ -467,6 +504,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
+    minHeight: 0,
     paddingHorizontal: 18,
     paddingTop: 8,
   },
@@ -530,7 +568,7 @@ const styles = StyleSheet.create({
 
   count: {
     fontSize: 12,
-    color: '#999',
+    color: '#999999',
   },
 
   savingBox: {
@@ -539,7 +577,6 @@ const styles = StyleSheet.create({
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 10,
   },
 
@@ -547,15 +584,13 @@ const styles = StyleSheet.create({
     color: '#B83D73',
     fontSize: 12,
     fontWeight: '600',
-  },
-
-  listView: {
-    flex: 1,
+    marginLeft: 8,
   },
 
   list: {
     paddingTop: 2,
-    paddingBottom: 18,
+    paddingBottom: 30,
+    flexGrow: 1,
   },
 
   card: {
@@ -601,7 +636,7 @@ const styles = StyleSheet.create({
   },
 
   author: {
-    color: '#999',
+    color: '#999999',
     fontSize: 11,
     marginTop: 4,
   },
@@ -631,13 +666,14 @@ const styles = StyleSheet.create({
 
   actions: {
     flexDirection: 'row',
-    gap: 6,
+    alignItems: 'center',
   },
 
   smallButton: {
     backgroundColor: '#D94F87',
     padding: 9,
     borderRadius: 9,
+    marginRight: 6,
   },
 
   deleteButton: {
@@ -691,7 +727,7 @@ const styles = StyleSheet.create({
   },
 
   emptyText: {
-    color: '#999',
+    color: '#999999',
     textAlign: 'center',
     fontSize: 12,
     marginTop: 5,
@@ -702,8 +738,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#F6DCE7',
     borderTopWidth: 1,
     paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 5 : 7,
-    minHeight: 62,
     elevation: 10,
   },
 
