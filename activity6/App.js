@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -24,36 +25,60 @@ const books = [
 
 function BookProvider({ children }) {
   const [readingList, setReadingList] = useState([]);
+  const [saving, setSaving] = useState(false);
 
-  // Add a book to the shared list
+  // Show a short updating state before changing the list
+  const updateLibrary = (action) => {
+    if (saving) return;
+
+    setSaving(true);
+
+    setTimeout(() => {
+      action();
+      setSaving(false);
+    }, 700);
+  };
+
   const addBook = (book) => {
-    setReadingList((current) => {
-      if (current.some((item) => item.id === book.id)) return current;
-      return [...current, { ...book, completed: false }];
+    if (readingList.some((item) => item.id === book.id)) return;
+
+    updateLibrary(() => {
+      setReadingList((current) => [
+        ...current,
+        { ...book, completed: false },
+      ]);
     });
   };
 
-  // Remove a book from the shared list
   const removeBook = (id) => {
-    setReadingList((current) =>
-      current.filter((book) => book.id !== id)
-    );
+    updateLibrary(() => {
+      setReadingList((current) =>
+        current.filter((book) => book.id !== id)
+      );
+    });
   };
 
-  // Update a book's reading status
   const toggleCompleted = (id) => {
-    setReadingList((current) =>
-      current.map((book) =>
-        book.id === id
-          ? { ...book, completed: !book.completed }
-          : book
-      )
-    );
+    updateLibrary(() => {
+      setReadingList((current) =>
+        current.map((book) =>
+          book.id === id
+            ? { ...book, completed: !book.completed }
+            : book
+        )
+      );
+    });
   };
 
   return (
     <BookContext.Provider
-      value={{ readingList, addBook, removeBook, toggleCompleted }}
+      value={{
+        readingList,
+        saving,
+        addBook,
+        removeBook,
+        toggleCompleted,
+      }}
     >
       {children}
     </BookContext.Provider>
@@ -62,14 +87,29 @@ function BookProvider({ children }) {
 
 const Tab = createBottomTabNavigator();
 
+function SavingMessage() {
+  const { saving } = useContext(BookContext);
+
+  if (!saving) return null;
+
+  return (
+    <View style={styles.savingBox}>
+      <ActivityIndicator size="small" color="#D94F87" />
+      <Text style={styles.savingText}>Updating your library...</Text>
+    </View>
+  );
+}
+
 function DiscoverScreen() {
-  const { readingList, addBook } = useContext(BookContext);
+  const { readingList, addBook, saving } = useContext(BookContext);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>BookNest 📚</Text>
       <Text style={styles.subtitle}>Find your next favorite read.</Text>
       <Text style={styles.count}>Your library: {readingList.length} books</Text>
+
+      <SavingMessage />
 
       <FlatList
         data={books}
@@ -88,7 +128,7 @@ function DiscoverScreen() {
               <TouchableOpacity
                 style={[styles.button, saved && styles.savedButton]}
                 onPress={() => addBook(item)}
-                disabled={saved}
+                disabled={saved || saving}
               >
                 <Text style={styles.buttonText}>
                   {saved ? 'Added ✓' : '+ Add'}
@@ -103,15 +143,15 @@ function DiscoverScreen() {
 }
 
 function ReadingScreen() {
-  const { readingList, removeBook, toggleCompleted } =
+  const { readingList, removeBook, toggleCompleted, saving } =
     useContext(BookContext);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Reading ♡</Text>
-      <Text style={styles.subtitle}>
-        {readingList.length} saved books
-      </Text>
+      <Text style={styles.subtitle}>{readingList.length} saved books</Text>
+
+      <SavingMessage />
 
       <FlatList
         data={readingList}
@@ -134,6 +174,7 @@ function ReadingScreen() {
               <TouchableOpacity
                 style={styles.smallButton}
                 onPress={() => toggleCompleted(item.id)}
+                disabled={saving}
               >
                 <Ionicons
                   name={item.completed ? 'refresh' : 'checkmark'}
@@ -145,6 +186,7 @@ function ReadingScreen() {
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => removeBook(item.id)}
+                disabled={saving}
               >
                 <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
               </TouchableOpacity>
@@ -212,6 +254,20 @@ const styles = StyleSheet.create({
     color: '#B83D73',
     fontWeight: '600',
     marginBottom: 12,
+  },
+  savingBox: {
+    backgroundColor: '#F9DCE8',
+    borderRadius: 10,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  savingText: {
+    color: '#B83D73',
+    fontSize: 12,
+    fontWeight: '600',
   },
   list: {
     paddingBottom: 20,
