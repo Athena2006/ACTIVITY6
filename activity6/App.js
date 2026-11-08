@@ -1,5 +1,12 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+} from 'react';
+
 import {
   View,
   Text,
@@ -7,39 +14,88 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Animated,
+  Easing,
+  Platform,
 } from 'react-native';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 
 const BookContext = createContext();
 
 const books = [
-  { id: '1', title: 'The Little Prince', author: 'Antoine de Saint-Exupéry', emoji: '⭐' },
-  { id: '2', title: 'Atomic Habits', author: 'James Clear', emoji: '🌱' },
-  { id: '3', title: 'The Alchemist', author: 'Paulo Coelho', emoji: '🪄' },
-  { id: '4', title: 'Wonder', author: 'R. J. Palacio', emoji: '🌸' },
-  { id: '5', title: 'Ikigai', author: 'Héctor García', emoji: '🌷' },
+  {
+    id: '1',
+    title: 'The Little Prince',
+    author: 'Antoine de Saint-Exupéry',
+    emoji: '⭐',
+  },
+  {
+    id: '2',
+    title: 'Atomic Habits',
+    author: 'James Clear',
+    emoji: '🌱',
+  },
+  {
+    id: '3',
+    title: 'The Alchemist',
+    author: 'Paulo Coelho',
+    emoji: '🪄',
+  },
+  {
+    id: '4',
+    title: 'Wonder',
+    author: 'R. J. Palacio',
+    emoji: '🌸',
+  },
+  {
+    id: '5',
+    title: 'Ikigai',
+    author: 'Héctor García',
+    emoji: '🌷',
+  },
+  {
+    id: '6',
+    title: 'The Power of Now',
+    author: 'Eckhart Tolle',
+    emoji: '☁️',
+  },
 ];
 
+// Share book information between tabs
 function BookProvider({ children }) {
   const [readingList, setReadingList] = useState([]);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
-  // Update shared book information
+  // Update the shared reading list
   const updateLibrary = (action) => {
-    if (saving) return;
+    if (savingRef.current) return;
+
+    savingRef.current = true;
     setSaving(true);
 
     setTimeout(() => {
       action();
+      savingRef.current = false;
       setSaving(false);
     }, 700);
   };
 
+  // Add a selected book
   const addBook = (book) => {
-    if (readingList.some((item) => item.id === book.id)) return;
+    if (
+      savingRef.current ||
+      readingList.some((item) => item.id === book.id)
+    ) {
+      return;
+    }
 
     updateLibrary(() => {
       setReadingList((current) => [
@@ -49,6 +105,7 @@ function BookProvider({ children }) {
     });
   };
 
+  // Remove a selected book
   const removeBook = (id) => {
     updateLibrary(() => {
       setReadingList((current) =>
@@ -57,6 +114,7 @@ function BookProvider({ children }) {
     });
   };
 
+  // Change the completion status
   const toggleCompleted = (id) => {
     updateLibrary(() => {
       setReadingList((current) =>
@@ -71,15 +129,47 @@ function BookProvider({ children }) {
 
   return (
     <BookContext.Provider
-      value={{ readingList, saving, addBook, removeBook, toggleCompleted }}
+      value={{
+        readingList,
+        saving,
+        addBook,
+        removeBook,
+        toggleCompleted,
+      }}
     >
       {children}
     </BookContext.Provider>
   );
 }
 
-const Tab = createBottomTabNavigator();
+// Reusable entrance animation
+function useScreenAnimation() {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(22)).current;
 
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 650,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 650,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
+  return {
+    opacity: fadeAnim,
+    transform: [{ translateY: slideAnim }],
+  };
+}
+
+// Show updating message
 function SavingMessage() {
   const { saving } = useContext(BookContext);
 
@@ -88,56 +178,80 @@ function SavingMessage() {
   return (
     <View style={styles.savingBox}>
       <ActivityIndicator size="small" color="#D94F87" />
-      <Text style={styles.savingText}>Updating your library...</Text>
+      <Text style={styles.savingText}>
+        Updating your library...
+      </Text>
     </View>
   );
 }
 
+// Discover tab
 function DiscoverScreen() {
   const { readingList, addBook, saving } = useContext(BookContext);
+  const animation = useScreenAnimation();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <Animated.View style={[styles.header, animation]}>
           <Text style={styles.headerEmoji}>📚</Text>
           <Text style={styles.title}>BookNest</Text>
-          <Text style={styles.subtitle}>A little space for big stories.</Text>
-        </View>
-
-        <View style={styles.banner}>
-          <Text style={styles.bannerTitle}>Find your next chapter ♡</Text>
-          <Text style={styles.bannerText}>
-            Discover stories and build your own reading collection.
+          <Text style={styles.subtitle}>
+            A little space for big stories.
           </Text>
-        </View>
 
-        <Text style={styles.sectionTitle}>Discover Books</Text>
-        <Text style={styles.count}>{readingList.length} books in your library</Text>
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>
+              Find your next chapter ♡
+            </Text>
+            <Text style={styles.bannerText}>
+              Discover stories and build your own reading collection.
+            </Text>
+          </View>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Discover Books</Text>
+            <Text style={styles.count}>
+              {readingList.length} saved
+            </Text>
+          </View>
+        </Animated.View>
 
         <SavingMessage />
 
         <FlatList
+          style={styles.listView}
           data={books}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const saved = readingList.some((book) => book.id === item.id);
+            const saved = readingList.some(
+              (book) => book.id === item.id
+            );
 
             return (
-              <View style={styles.card}>
+              <Animated.View style={[styles.card, animation]}>
                 <View style={styles.bookEmoji}>
-                  <Text style={styles.emojiText}>{item.emoji}</Text>
+                  <Text style={styles.emojiText}>
+                    {item.emoji}
+                  </Text>
                 </View>
 
                 <View style={styles.bookInfo}>
-                  <Text style={styles.bookTitle}>{item.title}</Text>
-                  <Text style={styles.author}>{item.author}</Text>
+                  <Text style={styles.bookTitle}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.author}>
+                    {item.author}
+                  </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.button, saved && styles.savedButton]}
+                  style={[
+                    styles.button,
+                    saved && styles.savedButton,
+                  ]}
                   onPress={() => addBook(item)}
                   disabled={saved || saving}
                   activeOpacity={0.7}
@@ -146,7 +260,7 @@ function DiscoverScreen() {
                     {saved ? 'Added ✓' : '+ Add'}
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             );
           }}
         />
@@ -155,30 +269,48 @@ function DiscoverScreen() {
   );
 }
 
+// My Reading tab
 function ReadingScreen() {
-  const { readingList, removeBook, toggleCompleted, saving } =
-    useContext(BookContext);
+  const {
+    readingList,
+    removeBook,
+    toggleCompleted,
+    saving,
+  } = useContext(BookContext);
 
-  const completed = readingList.filter((book) => book.completed).length;
+  const animation = useScreenAnimation();
+
+  const completed = readingList.filter(
+    (book) => book.completed
+  ).length;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        <Text style={styles.headerEmoji}>💗</Text>
-        <Text style={styles.title}>My Reading List</Text>
-        <Text style={styles.subtitle}>Your stories, your progress.</Text>
-
-        <View style={styles.progressCard}>
-          <Text style={styles.progressTitle}>Your Reading Progress</Text>
-          <Text style={styles.progressNumber}>
-            {completed} / {readingList.length}
+        <Animated.View style={[styles.header, animation]}>
+          <Text style={styles.headerEmoji}>💗</Text>
+          <Text style={styles.title}>My Reading List</Text>
+          <Text style={styles.subtitle}>
+            Your stories, your progress.
           </Text>
-          <Text style={styles.progressCaption}>Books completed</Text>
-        </View>
+
+          <View style={styles.progressCard}>
+            <Text style={styles.progressTitle}>
+              Your Reading Progress
+            </Text>
+            <Text style={styles.progressNumber}>
+              {completed} / {readingList.length}
+            </Text>
+            <Text style={styles.progressCaption}>
+              Books completed
+            </Text>
+          </View>
+        </Animated.View>
 
         <SavingMessage />
 
         <FlatList
+          style={styles.listView}
           data={readingList}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -186,23 +318,33 @@ function ReadingScreen() {
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <Text style={styles.emptyEmoji}>📖</Text>
-              <Text style={styles.emptyTitle}>Your list is waiting!</Text>
-              <Text style={styles.empty}>
+              <Text style={styles.emptyTitle}>
+                Your list is waiting!
+              </Text>
+              <Text style={styles.emptyText}>
                 Add a book from the Discover tab.
               </Text>
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <Animated.View style={[styles.card, animation]}>
               <View style={styles.bookEmoji}>
-                <Text style={styles.emojiText}>{item.emoji}</Text>
+                <Text style={styles.emojiText}>
+                  {item.emoji}
+                </Text>
               </View>
 
               <View style={styles.bookInfo}>
-                <Text style={styles.bookTitle}>{item.title}</Text>
-                <Text style={styles.author}>{item.author}</Text>
+                <Text style={styles.bookTitle}>
+                  {item.title}
+                </Text>
+                <Text style={styles.author}>
+                  {item.author}
+                </Text>
                 <Text style={styles.status}>
-                  {item.completed ? 'Completed ✓' : 'Currently reading'}
+                  {item.completed
+                    ? 'Completed ✓'
+                    : 'Currently reading'}
                 </Text>
               </View>
 
@@ -211,9 +353,12 @@ function ReadingScreen() {
                   style={styles.smallButton}
                   onPress={() => toggleCompleted(item.id)}
                   disabled={saving}
+                  activeOpacity={0.7}
                 >
                   <Ionicons
-                    name={item.completed ? 'refresh' : 'checkmark'}
+                    name={
+                      item.completed ? 'refresh' : 'checkmark'
+                    }
                     size={18}
                     color="#FFFFFF"
                   />
@@ -223,11 +368,16 @@ function ReadingScreen() {
                   style={styles.deleteButton}
                   onPress={() => removeBook(item.id)}
                   disabled={saving}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+                  <Ionicons
+                    name="trash-outline"
+                    size={18}
+                    color="#FFFFFF"
+                  />
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           )}
         />
       </View>
@@ -235,6 +385,7 @@ function ReadingScreen() {
   );
 }
 
+// Configure bottom tab navigation
 function MainNavigation() {
   return (
     <NavigationContainer>
@@ -247,20 +398,31 @@ function MainNavigation() {
           tabBarLabelStyle: styles.tabLabel,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name={route.name === 'Discover' ? 'compass-outline' : 'heart-outline'}
+              name={
+                route.name === 'Discover'
+                  ? 'compass-outline'
+                  : 'heart-outline'
+              }
               size={size}
               color={color}
             />
           ),
         })}
       >
-        <Tab.Screen name="Discover" component={DiscoverScreen} />
-        <Tab.Screen name="My Reading" component={ReadingScreen} />
+        <Tab.Screen
+          name="Discover"
+          component={DiscoverScreen}
+        />
+        <Tab.Screen
+          name="My Reading"
+          component={ReadingScreen}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
 }
 
+// Main application
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -282,31 +444,33 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 14,
+    flexShrink: 0,
   },
   headerEmoji: {
-    fontSize: 30,
+    fontSize: 28,
+    textAlign: 'center',
   },
   title: {
-    fontSize: 26,
+    fontSize: 25,
     fontWeight: 'bold',
     color: '#D94F87',
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#9B8791',
+    textAlign: 'center',
     marginTop: 4,
-    marginBottom: 15,
+    marginBottom: 14,
   },
   banner: {
     backgroundColor: '#F9DCE8',
-    padding: 16,
+    padding: 15,
     borderRadius: 17,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   bannerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#B83D73',
   },
@@ -316,6 +480,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 5,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   sectionTitle: {
     fontSize: 18,
     color: '#B83D73',
@@ -324,8 +494,6 @@ const styles = StyleSheet.create({
   count: {
     fontSize: 12,
     color: '#999',
-    marginTop: 4,
-    marginBottom: 10,
   },
   savingBox: {
     backgroundColor: '#F9DCE8',
@@ -341,8 +509,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  listView: {
+    flex: 1,
+  },
   list: {
-    paddingBottom: 20,
+    paddingTop: 2,
+    paddingBottom: 18,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -367,7 +539,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   emojiText: {
-    fontSize: 23,
+    fontSize: 22,
   },
   bookInfo: {
     flex: 1,
@@ -418,20 +590,20 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     backgroundColor: '#F9DCE8',
-    padding: 17,
+    padding: 15,
     borderRadius: 17,
-    marginBottom: 15,
+    marginBottom: 14,
   },
   progressTitle: {
     color: '#B83D73',
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 14,
   },
   progressNumber: {
-    fontSize: 27,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#D94F87',
-    marginTop: 7,
+    marginTop: 6,
   },
   progressCaption: {
     fontSize: 12,
@@ -453,7 +625,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 10,
   },
-  empty: {
+  emptyText: {
     color: '#999',
     textAlign: 'center',
     fontSize: 12,
@@ -463,9 +635,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopColor: '#F6DCE7',
     borderTopWidth: 1,
-    height: 62,
-    paddingTop: 5,
-    paddingBottom: 5,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === 'ios' ? 5 : 7,
+    minHeight: 62,
     elevation: 10,
   },
   tabLabel: {
