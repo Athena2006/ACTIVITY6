@@ -22,11 +22,16 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+
 import {
   SafeAreaProvider,
   SafeAreaView,
 } from 'react-native-safe-area-context';
 
+// Create the bottom tab navigator
+const Tab = createBottomTabNavigator();
+
+// Create shared book context
 const BookContext = createContext();
 
 const books = [
@@ -68,13 +73,13 @@ const books = [
   },
 ];
 
-// Share book information between tabs
+// Context Provider for shared book data
 function BookProvider({ children }) {
   const [readingList, setReadingList] = useState([]);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
-  // Update the shared reading list
+  // Show updating state before changing the reading list
   const updateLibrary = (action) => {
     if (savingRef.current) return;
 
@@ -88,7 +93,7 @@ function BookProvider({ children }) {
     }, 700);
   };
 
-  // Add a selected book
+  // Add a book to the reading list
   const addBook = (book) => {
     if (
       savingRef.current ||
@@ -105,7 +110,7 @@ function BookProvider({ children }) {
     });
   };
 
-  // Remove a selected book
+  // Remove a book from the reading list
   const removeBook = (id) => {
     updateLibrary(() => {
       setReadingList((current) =>
@@ -114,7 +119,7 @@ function BookProvider({ children }) {
     });
   };
 
-  // Change the completion status
+  // Change the book completion status
   const toggleCompleted = (id) => {
     updateLibrary(() => {
       setReadingList((current) =>
@@ -142,7 +147,7 @@ function BookProvider({ children }) {
   );
 }
 
-// Reusable entrance animation
+// Screen entrance animation
 function useScreenAnimation() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
@@ -169,7 +174,7 @@ function useScreenAnimation() {
   };
 }
 
-// Show updating message
+// Updating indicator
 function SavingMessage() {
   const { saving } = useContext(BookContext);
 
@@ -185,7 +190,7 @@ function SavingMessage() {
   );
 }
 
-// Discover tab
+// Discover Screen
 function DiscoverScreen() {
   const { readingList, addBook, saving } = useContext(BookContext);
   const animation = useScreenAnimation();
@@ -195,7 +200,9 @@ function DiscoverScreen() {
       <View style={styles.container}>
         <Animated.View style={[styles.header, animation]}>
           <Text style={styles.headerEmoji}>📚</Text>
+
           <Text style={styles.title}>BookNest</Text>
+
           <Text style={styles.subtitle}>
             A little space for big stories.
           </Text>
@@ -204,13 +211,17 @@ function DiscoverScreen() {
             <Text style={styles.bannerTitle}>
               Find your next chapter ♡
             </Text>
+
             <Text style={styles.bannerText}>
               Discover stories and build your own reading collection.
             </Text>
           </View>
 
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Discover Books</Text>
+            <Text style={styles.sectionTitle}>
+              Discover Books
+            </Text>
+
             <Text style={styles.count}>
               {readingList.length} saved
             </Text>
@@ -242,6 +253,7 @@ function DiscoverScreen() {
                   <Text style={styles.bookTitle}>
                     {item.title}
                   </Text>
+
                   <Text style={styles.author}>
                     {item.author}
                   </Text>
@@ -269,7 +281,7 @@ function DiscoverScreen() {
   );
 }
 
-// My Reading tab
+// My Reading Screen
 function ReadingScreen() {
   const {
     readingList,
@@ -289,7 +301,9 @@ function ReadingScreen() {
       <View style={styles.container}>
         <Animated.View style={[styles.header, animation]}>
           <Text style={styles.headerEmoji}>💗</Text>
+
           <Text style={styles.title}>My Reading List</Text>
+
           <Text style={styles.subtitle}>
             Your stories, your progress.
           </Text>
@@ -298,9 +312,11 @@ function ReadingScreen() {
             <Text style={styles.progressTitle}>
               Your Reading Progress
             </Text>
+
             <Text style={styles.progressNumber}>
               {completed} / {readingList.length}
             </Text>
+
             <Text style={styles.progressCaption}>
               Books completed
             </Text>
@@ -318,9 +334,11 @@ function ReadingScreen() {
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <Text style={styles.emptyEmoji}>📖</Text>
+
               <Text style={styles.emptyTitle}>
                 Your list is waiting!
               </Text>
+
               <Text style={styles.emptyText}>
                 Add a book from the Discover tab.
               </Text>
@@ -338,9 +356,11 @@ function ReadingScreen() {
                 <Text style={styles.bookTitle}>
                   {item.title}
                 </Text>
+
                 <Text style={styles.author}>
                   {item.author}
                 </Text>
+
                 <Text style={styles.status}>
                   {item.completed
                     ? 'Completed ✓'
@@ -385,17 +405,21 @@ function ReadingScreen() {
   );
 }
 
-// Configure bottom tab navigation
+// Bottom Tab Navigation
 function MainNavigation() {
   return (
     <NavigationContainer>
       <Tab.Navigator
+        initialRouteName="Discover"
         screenOptions={({ route }) => ({
           headerShown: false,
+
           tabBarActiveTintColor: '#D94F87',
           tabBarInactiveTintColor: '#B6A4AD',
+
           tabBarStyle: styles.tabBar,
           tabBarLabelStyle: styles.tabLabel,
+
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name={
@@ -413,6 +437,7 @@ function MainNavigation() {
           name="Discover"
           component={DiscoverScreen}
         />
+
         <Tab.Screen
           name="My Reading"
           component={ReadingScreen}
@@ -422,7 +447,7 @@ function MainNavigation() {
   );
 }
 
-// Main application
+// Main App
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -433,29 +458,35 @@ export default function App() {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFF5F8',
   },
+
   container: {
     flex: 1,
     paddingHorizontal: 18,
     paddingTop: 8,
   },
+
   header: {
     flexShrink: 0,
   },
+
   headerEmoji: {
     fontSize: 28,
     textAlign: 'center',
   },
+
   title: {
     fontSize: 25,
     fontWeight: 'bold',
     color: '#D94F87',
     textAlign: 'center',
   },
+
   subtitle: {
     fontSize: 12,
     color: '#9B8791',
@@ -463,38 +494,45 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 14,
   },
+
   banner: {
     backgroundColor: '#F9DCE8',
     padding: 15,
     borderRadius: 17,
     marginBottom: 16,
   },
+
   bannerTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#B83D73',
   },
+
   bannerText: {
     color: '#8F5570',
     fontSize: 12,
     lineHeight: 18,
     marginTop: 5,
   },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
+
   sectionTitle: {
     fontSize: 18,
     color: '#B83D73',
     fontWeight: 'bold',
   },
+
   count: {
     fontSize: 12,
     color: '#999',
   },
+
   savingBox: {
     backgroundColor: '#F9DCE8',
     borderRadius: 10,
@@ -504,18 +542,22 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
+
   savingText: {
     color: '#B83D73',
     fontSize: 12,
     fontWeight: '600',
   },
+
   listView: {
     flex: 1,
   },
+
   list: {
     paddingTop: 2,
     paddingBottom: 18,
   },
+
   card: {
     backgroundColor: '#FFFFFF',
     padding: 12,
@@ -527,8 +569,12 @@ const styles = StyleSheet.create({
     shadowColor: '#D98AA8',
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
   },
+
   bookEmoji: {
     width: 43,
     height: 48,
@@ -538,77 +584,93 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+
   emojiText: {
     fontSize: 22,
   },
+
   bookInfo: {
     flex: 1,
     paddingRight: 5,
   },
+
   bookTitle: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#C44578',
   },
+
   author: {
     color: '#999',
     fontSize: 11,
     marginTop: 4,
   },
+
   button: {
     backgroundColor: '#E45B91',
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 10,
   },
+
   savedButton: {
     backgroundColor: '#B9A6B0',
   },
+
   buttonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 11,
   },
+
   status: {
     color: '#D94F87',
     fontSize: 10,
     marginTop: 6,
   },
+
   actions: {
     flexDirection: 'row',
     gap: 6,
   },
+
   smallButton: {
     backgroundColor: '#D94F87',
     padding: 9,
     borderRadius: 9,
   },
+
   deleteButton: {
     backgroundColor: '#E77B91',
     padding: 9,
     borderRadius: 9,
   },
+
   progressCard: {
     backgroundColor: '#F9DCE8',
     padding: 15,
     borderRadius: 17,
     marginBottom: 14,
   },
+
   progressTitle: {
     color: '#B83D73',
     fontWeight: 'bold',
     fontSize: 14,
   },
+
   progressNumber: {
     fontSize: 26,
     fontWeight: 'bold',
     color: '#D94F87',
     marginTop: 6,
   },
+
   progressCaption: {
     fontSize: 12,
     color: '#8F5570',
   },
+
   emptyCard: {
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
@@ -616,21 +678,25 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     marginTop: 12,
   },
+
   emptyEmoji: {
     fontSize: 38,
   },
+
   emptyTitle: {
     color: '#C44578',
     fontSize: 16,
     fontWeight: 'bold',
     marginTop: 10,
   },
+
   emptyText: {
     color: '#999',
     textAlign: 'center',
     fontSize: 12,
     marginTop: 5,
   },
+
   tabBar: {
     backgroundColor: '#FFFFFF',
     borderTopColor: '#F6DCE7',
@@ -640,6 +706,7 @@ const styles = StyleSheet.create({
     minHeight: 62,
     elevation: 10,
   },
+
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',
