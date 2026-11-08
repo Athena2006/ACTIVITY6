@@ -1,62 +1,104 @@
 
-import React from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Create shared book context
+const BookContext = createContext();
+
+const books = [
+  { id: '1', title: 'The Little Prince', author: 'Antoine de Saint-Exupéry' },
+  { id: '2', title: 'Atomic Habits', author: 'James Clear' },
+  { id: '3', title: 'The Alchemist', author: 'Paulo Coelho' },
+  { id: '4', title: 'Wonder', author: 'R. J. Palacio' },
+];
+
+function BookProvider({ children }) {
+  const [readingList, setReadingList] = useState([]);
+
+  return (
+    <BookContext.Provider value={{ readingList, setReadingList }}>
+      {children}
+    </BookContext.Provider>
+  );
+}
+
 const Tab = createBottomTabNavigator();
 
 function DiscoverScreen() {
+  const { readingList } = useContext(BookContext);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>BookNest 📚</Text>
       <Text style={styles.subtitle}>Discover your next favorite book.</Text>
+      <Text style={styles.info}>
+        Books in your reading list: {readingList.length}
+      </Text>
 
-      <View style={styles.card}>
-        <Text style={styles.bookTitle}>The Little Prince</Text>
-        <Text style={styles.author}>Antoine de Saint-Exupéry</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.bookTitle}>Atomic Habits</Text>
-        <Text style={styles.author}>James Clear</Text>
-      </View>
+      {books.map((book) => (
+        <View key={book.id} style={styles.card}>
+          <Text style={styles.bookTitle}>{book.title}</Text>
+          <Text style={styles.author}>{book.author}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 function ReadingScreen() {
+  const { readingList } = useContext(BookContext);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Reading List ♡</Text>
-      <Text style={styles.subtitle}>Your saved books will appear here.</Text>
+      <Text style={styles.subtitle}>
+        Saved books: {readingList.length}
+      </Text>
+
+      {readingList.map((book) => (
+        <View key={book.id} style={styles.card}>
+          <Text style={styles.bookTitle}>{book.title}</Text>
+          <Text style={styles.author}>{book.author}</Text>
+        </View>
+      ))}
     </View>
+  );
+}
+
+function MainNavigation() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: '#D94F87',
+          tabBarInactiveTintColor: '#A99AA1',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name={route.name === 'Discover' ? 'book-outline' : 'bookmark-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        })}
+      >
+        <Tab.Screen name="Discover" component={DiscoverScreen} />
+        <Tab.Screen name="My Reading" component={ReadingScreen} />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerShown: false,
-            tabBarActiveTintColor: '#D94F87',
-            tabBarInactiveTintColor: '#A99AA1',
-            tabBarIcon: ({ color, size }) => {
-              const iconName =
-                route.name === 'Discover' ? 'book-outline' : 'bookmark-outline';
-
-              return <Ionicons name={iconName} size={size} color={color} />;
-            },
-          })}
-        >
-          <Tab.Screen name="Discover" component={DiscoverScreen} />
-          <Tab.Screen name="My Reading" component={ReadingScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <BookProvider>
+        <MainNavigation />
+      </BookProvider>
     </SafeAreaProvider>
   );
 }
@@ -77,7 +119,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888',
     marginTop: 5,
-    marginBottom: 20,
+    marginBottom: 18,
+  },
+  info: {
+    color: '#B83D73',
+    marginBottom: 15,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: '#FFFFFF',
